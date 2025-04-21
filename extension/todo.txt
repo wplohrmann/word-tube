@@ -1,0 +1,5 @@
+1. Implement a webpage to display the 100 most interesting words.
+2. Write a script to analyze captions and extract the most interesting words.
+3. Add an icon (icon.png) for the extension.
+4. Create a popup.html file for the extension's UI.
+5. Test the extension on YouTube videos with German captions.
