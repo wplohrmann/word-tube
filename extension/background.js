@@ -5,7 +5,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 const response = await fetch(chrome.runtime.getURL('common_german_words.json'));
                 const commonWords = await response.json();
                 chrome.storage.local.get('combinedCaptions', (result) => {
-                    console.log("Combined captions retrieved from storage:", result.combinedCaptions);
                     const captions = result.combinedCaptions || "";
                     const interestingWords = computeInterestingWords(message.captions || captions, commonWords);
                     sendResponse({ interestingWords, combinedCaptions: captions });
@@ -31,15 +30,11 @@ chrome.webRequest.onCompleted.addListener(
         });
         if (response.ok) {
           const captionsText = await response.text();
-          console.log("Captured captions:", captionsText);
           const captionsJson = JSON.parse(captionsText);
           const combinedText = captionsJson.events
             .flatMap(event => event.segs.map(seg => seg.utf8))
             .join('\n');
-          console.log("Combined captions text:", combinedText);
-          chrome.storage.local.set({ combinedCaptions: combinedText }, () => {
-            console.log("Combined captions text saved to storage.");
-          });
+          chrome.storage.local.set({ combinedCaptions: combinedText });
         } else {
           console.error("Failed to fetch captions from intercepted request:", response.statusText);
         }
@@ -52,27 +47,31 @@ chrome.webRequest.onCompleted.addListener(
 );
 
 function computeInterestingWords(captionsText, commonWords) {
-  const wordCounts = {};
-  const words = captionsText.toLowerCase().match(/\b\w+\b/g);
+    const wordCounts = {};
+    const words = captionsText.toLowerCase().match(/\b[a-z]+\b/g); // Updated regex to ignore numbers
 
-  // Count occurrences of each word in the captions
-  words.forEach(word => {
-    wordCounts[word] = (wordCounts[word] || 0) + 1;
-  });
+    // Count occurrences of each word in the captions
+    words.forEach(word => {
+        wordCounts[word] = (wordCounts[word] || 0) + 1;
+    });
 
-  // Compute interestingness scores
-  const interestingWords = [];
-  for (const [word, count] of Object.entries(wordCounts)) {
-    if (commonWords[word] && commonWords[word] <= 100) {
-      // Word is among the top 100 most common words
-      continue;
+    // Compute interestingness scores
+    const interestingWords = [];
+    for (const [word, count] of Object.entries(wordCounts)) {
+        if (commonWords[word] && commonWords[word] <= 100) {
+            // Word is among the top 100 most common words
+            continue;
+        }
+        if (word.length < 4) {
+            // Ignore short words
+            continue;
+        }
+
+        const interestingness = count / (commonWords[word] || 1);
+        interestingWords.push({ word, interestingness });
     }
 
-    const interestingness = commonWords[word] ? count / commonWords[word] : 1;
-    interestingWords.push({ word, interestingness });
-  }
-
-  // Sort by interestingness in descending order and take the top 100
-  interestingWords.sort((a, b) => b.interestingness - a.interestingness);
-  return interestingWords.slice(0, 100);
+    // Sort by interestingness in descending order and take the top 100
+    interestingWords.sort((a, b) => b.interestingness - a.interestingness);
+    return interestingWords.slice(0, 100);
 }

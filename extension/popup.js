@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   analyzeButton.addEventListener('click', () => {
     chrome.runtime.sendMessage({ action: 'getInterestingWords' }, response => {
       if (response && response.interestingWords) {
-        analysisResults.innerHTML = '<h2>Analysis Results</h2>';
+        analysisResults.innerHTML = '<h2>Most interesting words</h2>';
         const list = document.createElement('ul');
         response.interestingWords.forEach(wordObj => {
           const listItem = document.createElement('li');
